@@ -43,6 +43,11 @@ cdef double std(double[:] a) nogil:
 cdef double sharpe(double[:] a) nogil:
     return mean(a)/std(a)
 
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)  # turn off negative index wrapping for entire function
+@cython.cdivision(True)
+cdef double sortino_m30(np.ndarray[np.float64_t,ndim=1] a):
+    return mean(a)/std(a[a<0])*sqrt(12096)
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)  # turn off negative index wrapping for entire function
@@ -54,7 +59,7 @@ cdef double[:] compute_R(double[:,:] J):
         double[:] R = np.empty(N)
     
     for i in xrange(N):
-        R[i] = sharpe(J[:,i])
+        R[i] = sortino_m30(J[:,i])
     
     return R
 
@@ -115,11 +120,8 @@ cpdef double pbo(double[:,:] M, int S):
         # itertools.combinations is already preserving the order of c
         J = np.concatenate(c)
         index_j = np.concatenate(d)
-        # print np.setdiff1d(index,index_j) ==  np.setdiff1d(index,index_j).sort()
         index_bar = np.setdiff1d(index,index_j)
-        # print np.all(index_bar[:-1] <= index_bar[1:])
         J_bar = np.take(M,index_bar, axis=0)
-        # print "wewe"
         R_c[comb_index,:] = compute_R(J)
         R_c_bar[comb_index,:] = compute_R(J_bar)
         r_c = np.array(R_c[comb_index,:]).argsort().argsort() + 1
@@ -132,7 +134,6 @@ cpdef double pbo(double[:,:] M, int S):
 
 
     lambda_c = lambda_c[np.isfinite(lambda_c) & ~np.isnan(lambda_c)]
-    # pdf_all = gaussian_kde(lambda_c).pdf(np.arange(-10,10, 0.01))
     pdf = gaussian_kde(lambda_c).pdf(np.arange(-10,0, 0.01))
     
     phi = np.trapz(pdf,dx=0.01)
@@ -144,6 +145,5 @@ cpdef double pbo(double[:,:] M, int S):
     pdf_R_bar = gaussian_kde(R_bar).pdf(np.arange(-10,0,0.01))
 
     prob_loss = np.trapz(pdf_R_bar,dx=0.01)
-    # print prob_loss
 
     return phi
