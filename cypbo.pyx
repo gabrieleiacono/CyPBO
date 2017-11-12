@@ -59,7 +59,7 @@ cdef double[:] compute_R(double[:,:] J):
         double[:] R = np.empty(N)
     
     for i in xrange(N):
-        R[i] = sortino_m30(J[:,i])
+        R[i] = sortino_m30(np.array(J[:,i]))
     
     return R
 
@@ -144,5 +144,6 @@ cpdef double pbo(double[:,:] M, int S):
     pdf_R_bar = gaussian_kde(R_bar).pdf(np.arange(-10,0,0.01))
 
     prob_loss = np.trapz(pdf_R_bar,dx=0.01)
-
+    print "pbo: ", phi
+    print "probability of loss: ", prob_loss
     return phi
